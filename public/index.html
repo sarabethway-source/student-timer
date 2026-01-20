@@ -833,6 +833,7 @@
               <span style="background: var(--success); color: black; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-left: 12px;">TEACHER</span>
             </div>
             <div class="user-info">
+              <button class="btn btn-secondary" onclick="showScheduleEditor()" style="margin-right: 8px;">📅 Edit Schedule</button>
               <span class="user-name">${currentUser.name}</span>
               <button class="btn btn-secondary" onclick="handleLogout()">Sign Out</button>
             </div>
@@ -1126,6 +1127,114 @@
 
     function closeLightbox() {
       document.getElementById('lightbox').classList.remove('visible');
+    }
+
+    // Schedule Editor
+    let currentSchedule = null;
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+    
+    async function showScheduleEditor() {
+      currentSchedule = await fetchJSON('/api/schedule');
+      
+      render(`
+        <div class="container">
+          <header class="header">
+            <div class="logo">
+              <div class="logo-icon">🍅</div>
+              <span>Schedule Editor</span>
+            </div>
+            <div class="user-info">
+              <button class="btn btn-secondary" onclick="showTeacherDashboard()">← Back to Dashboard</button>
+            </div>
+          </header>
+
+          <div class="main-content">
+            <div class="content-header">
+              <h2 class="content-title">Edit Pomodoro Schedule</h2>
+              <button class="btn btn-primary" onclick="saveSchedule()">💾 Save Schedule</button>
+            </div>
+            
+            <div style="margin-bottom: 24px;">
+              <label class="form-label">Select Day</label>
+              <select id="schedule-day" class="form-input" style="width: 200px;" onchange="renderDaySchedule()">
+                ${days.map(d => `<option value="${d}">${d}</option>`).join('')}
+              </select>
+              <button class="btn btn-secondary" style="margin-left: 12px;" onclick="copyToAllDays()">Copy to All Days</button>
+            </div>
+            
+            <div id="schedule-blocks"></div>
+            
+            <button class="btn btn-secondary" onclick="addBlock()" style="margin-top: 16px;">+ Add Time Block</button>
+          </div>
+        </div>
+      `);
+      
+      renderDaySchedule();
+    }
+    
+    function renderDaySchedule() {
+      const day = document.getElementById('schedule-day').value;
+      const blocks = currentSchedule[day] || [];
+      
+      document.getElementById('schedule-blocks').innerHTML = blocks.length === 0 ? `
+        <div class="empty-state" style="padding: 40px;">
+          <p>No blocks for ${day}. Click "Add Time Block" to create one.</p>
+        </div>
+      ` : blocks.map((block, i) => `
+        <div class="schedule-block" style="display: flex; gap: 12px; align-items: center; margin-bottom: 12px; padding: 16px; background: var(--bg-elevated); border-radius: 12px;">
+          <input type="text" value="${block.start}" placeholder="9:00 AM" 
+            style="width: 100px; padding: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; color: white;"
+            onchange="updateBlock(${i}, 'start', this.value)">
+          <span style="color: var(--text-muted);">to</span>
+          <input type="text" value="${block.end}" placeholder="9:30 AM"
+            style="width: 100px; padding: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; color: white;"
+            onchange="updateBlock(${i}, 'end', this.value)">
+          <input type="text" value="${block.name}" placeholder="Block name"
+            style="flex: 1; padding: 8px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; color: white;"
+            onchange="updateBlock(${i}, 'name', this.value)">
+          <button onclick="removeBlock(${i})" style="background: none; border: none; color: var(--accent); cursor: pointer; font-size: 18px;">🗑️</button>
+        </div>
+      `).join('');
+    }
+    
+    function updateBlock(index, field, value) {
+      const day = document.getElementById('schedule-day').value;
+      if (!currentSchedule[day]) currentSchedule[day] = [];
+      currentSchedule[day][index][field] = value;
+    }
+    
+    function addBlock() {
+      const day = document.getElementById('schedule-day').value;
+      if (!currentSchedule[day]) currentSchedule[day] = [];
+      currentSchedule[day].push({ start: '', end: '', name: 'New Block' });
+      renderDaySchedule();
+    }
+    
+    function removeBlock(index) {
+      const day = document.getElementById('schedule-day').value;
+      currentSchedule[day].splice(index, 1);
+      renderDaySchedule();
+    }
+    
+    function copyToAllDays() {
+      const day = document.getElementById('schedule-day').value;
+      const blocks = JSON.parse(JSON.stringify(currentSchedule[day] || []));
+      days.forEach(d => {
+        currentSchedule[d] = JSON.parse(JSON.stringify(blocks));
+      });
+      alert('Schedule copied to all weekdays!');
+    }
+    
+    async function saveSchedule() {
+      try {
+        await fetchJSON('/api/admin/schedule', {
+          method: 'POST',
+          body: JSON.stringify({ schedule: currentSchedule })
+        });
+        alert('Schedule saved! Students will see the new schedule when they reload.');
+      } catch (err) {
+        alert('Failed to save schedule');
+      }
     }
 
     // Notify extension of login (so it can capture screenshots)

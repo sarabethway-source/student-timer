@@ -64,6 +64,14 @@ async function initDatabase() {
     )
   `);
   
+  db.run(`
+    CREATE TABLE IF NOT EXISTS schedule (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schedule_json TEXT NOT NULL,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  
   saveDatabase();
   console.log('Database initialized');
 }
@@ -430,6 +438,66 @@ app.delete('/api/admin/screenshots/:screenshotId', authMiddleware, teacherOnly, 
     res.status(500).json({ error: 'Delete failed' });
   }
 });
+
+// ============ SCHEDULE ROUTES ============
+
+// Get current schedule
+app.get('/api/schedule', (req, res) => {
+  const schedule = dbGet('SELECT schedule_json FROM schedule ORDER BY id DESC LIMIT 1');
+  if (schedule && schedule.schedule_json) {
+    res.json(JSON.parse(schedule.schedule_json));
+  } else {
+    // Return default schedule
+    res.json(getDefaultSchedule());
+  }
+});
+
+// Update schedule (teacher only)
+app.post('/api/admin/schedule', authMiddleware, teacherOnly, (req, res) => {
+  try {
+    const { schedule } = req.body;
+    const scheduleJson = JSON.stringify(schedule);
+    dbRun('INSERT INTO schedule (schedule_json, updated_at) VALUES (?, ?)', 
+      [scheduleJson, new Date().toISOString()]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Save schedule error:', error);
+    res.status(500).json({ error: 'Failed to save schedule' });
+  }
+});
+
+function getDefaultSchedule() {
+  return {
+    Monday: [
+      { start: '8:45 AM', end: '9:12 AM', name: 'Pomodoro 1' },
+      { start: '9:12 AM', end: '9:18 AM', name: 'Break' },
+      { start: '9:18 AM', end: '9:45 AM', name: 'Pomodoro 2' },
+      { start: '9:45 AM', end: '9:51 AM', name: 'Break' },
+      { start: '9:51 AM', end: '10:18 AM', name: 'Pomodoro 3' },
+      { start: '10:18 AM', end: '10:28 AM', name: 'Long Break' },
+      { start: '10:28 AM', end: '10:55 AM', name: 'Pomodoro 4' },
+      { start: '10:55 AM', end: '11:01 AM', name: 'Break' },
+      { start: '11:01 AM', end: '11:28 AM', name: 'Pomodoro 5' },
+      { start: '11:28 AM', end: '11:34 AM', name: 'Break' },
+      { start: '11:34 AM', end: '12:00 PM', name: 'Pomodoro 6' },
+      { start: '12:00 PM', end: '12:45 PM', name: 'Lunch' },
+      { start: '12:45 PM', end: '1:15 PM', name: 'Brain Lift' },
+      { start: '1:15 PM', end: '1:30 PM', name: 'Focus Time' },
+      { start: '1:30 PM', end: '1:36 PM', name: 'Break' },
+      { start: '1:36 PM', end: '2:03 PM', name: 'Focus Time' },
+      { start: '2:03 PM', end: '2:09 PM', name: 'Break' },
+      { start: '2:09 PM', end: '2:36 PM', name: 'Focus Time' },
+      { start: '2:36 PM', end: '2:42 PM', name: 'Break' },
+      { start: '2:42 PM', end: '3:09 PM', name: 'Focus Time' },
+      { start: '3:09 PM', end: '3:15 PM', name: 'Break' },
+      { start: '3:15 PM', end: '3:45 PM', name: 'Insights' },
+      { start: '3:45 PM', end: '3:55 PM', name: 'Clean Up' },
+      { start: '3:55 PM', end: '4:00 PM', name: 'Buffer' },
+      { start: '4:00 PM', end: '11:59 PM', name: 'Free Time' }
+    ],
+    Tuesday: [], Wednesday: [], Thursday: [], Friday: []
+  };
+}
 
 // ============ SERVE FRONTEND ============
 
