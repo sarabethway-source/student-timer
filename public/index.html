@@ -394,6 +394,22 @@
       text-overflow: ellipsis;
     }
 
+    .btn-delete {
+      background: rgba(255, 107, 107, 0.1);
+      border: 1px solid rgba(255, 107, 107, 0.3);
+      color: var(--accent);
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-delete:hover {
+      background: rgba(255, 107, 107, 0.2);
+    }
+
     /* Student Dashboard */
     .status-card {
       background: linear-gradient(145deg, var(--accent), #c0392b);
@@ -878,15 +894,20 @@
             <h2 class="content-title">${student.name}</h2>
             <p style="color: var(--text-muted); margin-top: 4px;">${student.email}</p>
           </div>
-          <div style="text-align: right;">
-            <div style="color: ${student.agreed_to_terms ? 'var(--success)' : 'var(--warning)'}; font-weight: 600;">
-              ${student.agreed_to_terms ? '✓ Terms Accepted' : '⚠ Pending Agreement'}
-            </div>
-            ${student.last_screenshot ? `
-              <div style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
-                Last active: ${formatDateTime(student.last_screenshot)}
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <button class="btn btn-primary" onclick="requestScreenshot(${studentId})" id="request-btn-${studentId}">
+              📸 Take Screenshot Now
+            </button>
+            <div style="text-align: right;">
+              <div style="color: ${student.agreed_to_terms ? 'var(--success)' : 'var(--warning)'}; font-weight: 600;">
+                ${student.agreed_to_terms ? '✓ Terms Accepted' : '⚠ Pending Agreement'}
               </div>
-            ` : ''}
+              ${student.last_screenshot ? `
+                <div style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">
+                  Last active: ${formatDateTime(student.last_screenshot)}
+                </div>
+              ` : ''}
+            </div>
           </div>
         </div>
         
@@ -898,17 +919,66 @@
         ` : `
           <div class="screenshot-grid">
             ${screenshots.map(s => `
-              <div class="screenshot-card">
+              <div class="screenshot-card" id="screenshot-${s.id}">
                 <img class="screenshot-image" src="${s.imageUrl}" alt="Screenshot" onclick="openLightbox('${s.imageUrl}')">
                 <div class="screenshot-info">
                   <div class="screenshot-time">${formatDateTime(s.captured_at)}</div>
                   <div class="screenshot-url" title="${s.url || ''}">${s.title || s.url || 'Unknown page'}</div>
+                  <button class="btn-delete" onclick="deleteScreenshot(${s.id}, ${studentId})">🗑️ Delete</button>
                 </div>
               </div>
             `).join('')}
           </div>
         `}
       `;
+    }
+
+    // Request screenshot from student
+    async function requestScreenshot(studentId) {
+      const btn = document.getElementById('request-btn-' + studentId);
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⏳ Requesting...';
+      btn.disabled = true;
+
+      try {
+        await fetchJSON(`/api/admin/students/${studentId}/request-screenshot`, {
+          method: 'POST'
+        });
+        btn.innerHTML = '✓ Requested!';
+        
+        // Refresh after a few seconds to show new screenshot
+        setTimeout(async () => {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+          document.getElementById('student-content').innerHTML = await getStudentContent(studentId);
+        }, 8000);
+      } catch (err) {
+        btn.innerHTML = '❌ Failed';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }, 2000);
+      }
+    }
+
+    // Delete screenshot
+    async function deleteScreenshot(screenshotId, studentId) {
+      if (!confirm('Delete this screenshot?')) return;
+
+      try {
+        await fetchJSON(`/api/admin/screenshots/${screenshotId}`, {
+          method: 'DELETE'
+        });
+        // Remove from DOM
+        const card = document.getElementById('screenshot-' + screenshotId);
+        if (card) {
+          card.style.opacity = '0';
+          card.style.transform = 'scale(0.8)';
+          setTimeout(() => card.remove(), 300);
+        }
+      } catch (err) {
+        alert('Failed to delete screenshot');
+      }
     }
 
     // API Helpers

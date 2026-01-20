@@ -379,6 +379,53 @@ app.get('/api/admin/students/:studentId', authMiddleware, teacherOnly, (req, res
   res.json(student);
 });
 
+// Request screenshot from student (teacher triggers this)
+const screenshotRequests = new Map(); // studentId -> { requested: timestamp }
+
+app.post('/api/admin/students/:studentId/request-screenshot', authMiddleware, teacherOnly, (req, res) => {
+  const { studentId } = req.params;
+  screenshotRequests.set(studentId, { requested: Date.now() });
+  res.json({ success: true, message: 'Screenshot requested' });
+});
+
+// Student checks if screenshot is requested
+app.get('/api/check-screenshot-request', authMiddleware, (req, res) => {
+  const request = screenshotRequests.get(String(req.userId));
+  if (request && (Date.now() - request.requested) < 30000) { // 30 second window
+    screenshotRequests.delete(String(req.userId));
+    res.json({ requested: true });
+  } else {
+    res.json({ requested: false });
+  }
+});
+
+// Delete screenshot (teacher only)
+app.delete('/api/admin/screenshots/:screenshotId', authMiddleware, teacherOnly, (req, res) => {
+  try {
+    const { screenshotId } = req.params;
+    
+    // Get screenshot info first
+    const screenshot = dbGet('SELECT user_id, filename FROM screenshots WHERE id = ?', [screenshotId]);
+    if (!screenshot) {
+      return res.status(404).json({ error: 'Screenshot not found' });
+    }
+    
+    // Delete file from disk
+    const filePath = path.join(__dirname, 'uploads', String(screenshot.user_id), screenshot.filename);
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+    
+    // Delete from database
+    dbRun('DELETE FROM screenshots WHERE id = ?', [screenshotId]);
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete screenshot error:', error);
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
 // ============ SERVE FRONTEND ============
 
 app.get('*', (req, res) => {
