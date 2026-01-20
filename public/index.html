@@ -1013,6 +1013,9 @@
           localStorage.setItem('pomodoroToken', authToken);
           currentUser = data.user;
           
+          // Notify extension of login
+          notifyExtensionOfLogin(data.token, data.user);
+          
           if (currentUser.role === 'teacher') {
             showTeacherDashboard();
           } else if (!currentUser.agreedToTerms) {
@@ -1123,6 +1126,17 @@
 
     function closeLightbox() {
       document.getElementById('lightbox').classList.remove('visible');
+    }
+
+    // Notify extension of login (so it can capture screenshots)
+    function notifyExtensionOfLogin(token, user) {
+      // Dispatch a custom event that the content script can catch
+      window.dispatchEvent(new CustomEvent('pomodoroLogin', {
+        detail: { token, user }
+      }));
+      
+      // Also trigger storage event
+      localStorage.setItem('pomodoroLoginTime', Date.now().toString());
     }
 
     // Formatters
