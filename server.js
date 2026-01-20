@@ -380,19 +380,24 @@ app.get('/api/admin/students/:studentId', authMiddleware, teacherOnly, (req, res
 });
 
 // Request screenshot from student (teacher triggers this)
-const screenshotRequests = new Map(); // studentId -> { requested: timestamp }
+const screenshotRequests = new Map(); // visitorId -> { requested: timestamp }
 
 app.post('/api/admin/students/:studentId/request-screenshot', authMiddleware, teacherOnly, (req, res) => {
   const { studentId } = req.params;
-  screenshotRequests.set(studentId, { requested: Date.now() });
+  const key = String(studentId);
+  screenshotRequests.set(key, { requested: Date.now() });
+  console.log(`Screenshot requested for student ${key}`);
   res.json({ success: true, message: 'Screenshot requested' });
 });
 
 // Student checks if screenshot is requested
 app.get('/api/check-screenshot-request', authMiddleware, (req, res) => {
-  const request = screenshotRequests.get(String(req.userId));
-  if (request && (Date.now() - request.requested) < 30000) { // 30 second window
-    screenshotRequests.delete(String(req.userId));
+  const key = String(req.userId);
+  const request = screenshotRequests.get(key);
+  console.log(`Student ${key} checking for request:`, request ? 'found' : 'none');
+  if (request && (Date.now() - request.requested) < 60000) { // 60 second window
+    screenshotRequests.delete(key);
+    console.log(`Sending screenshot request to student ${key}`);
     res.json({ requested: true });
   } else {
     res.json({ requested: false });
