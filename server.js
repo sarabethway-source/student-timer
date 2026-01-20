@@ -327,6 +327,40 @@ app.get('/api/my-screenshots', authMiddleware, (req, res) => {
   })));
 });
 
+// Get student's stats (days used, streak, etc.)
+app.get('/api/my-stats', authMiddleware, (req, res) => {
+  // Get user's created_at date
+  const user = dbGet('SELECT created_at FROM users WHERE id = ?', [req.userId]);
+  
+  // Get unique days with screenshots
+  const daysResult = dbGet(`
+    SELECT COUNT(DISTINCT date(captured_at)) as days 
+    FROM screenshots 
+    WHERE user_id = ?
+  `, [req.userId]);
+  
+  // Calculate member since
+  let memberSince = 'Today';
+  if (user && user.created_at) {
+    const created = new Date(user.created_at);
+    const now = new Date();
+    const diffDays = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) memberSince = 'Today';
+    else if (diffDays === 1) memberSince = 'Yesterday';
+    else if (diffDays < 7) memberSince = `${diffDays} days ago`;
+    else memberSince = created.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+  
+  // Simple streak calculation (days with screenshots)
+  const daysUsed = Math.max(1, daysResult?.days || 1);
+  
+  res.json({
+    daysUsed,
+    currentStreak: daysUsed,
+    memberSince
+  });
+});
+
 // ============ TEACHER/ADMIN ROUTES ============
 
 // Get all students

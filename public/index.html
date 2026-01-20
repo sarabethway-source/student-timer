@@ -746,12 +746,7 @@
 
     // Student Dashboard
     async function showStudentDashboard() {
-      const screenshots = await fetchJSON('/api/my-screenshots');
-      const today = screenshots.filter(s => {
-        const d = new Date(s.captured_at);
-        const now = new Date();
-        return d.toDateString() === now.toDateString();
-      });
+      const stats = await fetchJSON('/api/my-stats');
 
       render(`
         <div class="container">
@@ -769,47 +764,33 @@
           <div class="status-card">
             <div class="status-icon">✅</div>
             <div class="status-title">Focus Tracking Active</div>
-            <div class="status-subtitle">Your productivity is being monitored to help you stay focused</div>
+            <div class="status-subtitle">Keep up the great work, ${currentUser.name}!</div>
           </div>
 
           <div class="stats-grid">
             <div class="stat-card">
-              <div class="stat-value">${today.length}</div>
-              <div class="stat-label">Screenshots Today</div>
+              <div class="stat-value">${stats.daysUsed || 1}</div>
+              <div class="stat-label">Days Using Extension</div>
             </div>
             <div class="stat-card">
-              <div class="stat-value">${screenshots.length}</div>
-              <div class="stat-label">Total Screenshots</div>
+              <div class="stat-value">${stats.currentStreak || 1}</div>
+              <div class="stat-label">Day Streak 🔥</div>
             </div>
             <div class="stat-card">
-              <div class="stat-value">${today.length > 0 ? formatTime(today[0].captured_at) : '--'}</div>
-              <div class="stat-label">Last Capture</div>
+              <div class="stat-value">${stats.memberSince || 'Today'}</div>
+              <div class="stat-label">Member Since</div>
             </div>
           </div>
 
           <div class="main-content">
             <div class="content-header">
-              <h2 class="content-title">Your Recent Activity</h2>
+              <h2 class="content-title">Keep Focused!</h2>
             </div>
             
-            ${screenshots.length === 0 ? `
-              <div class="empty-state">
-                <div class="empty-state-icon">📸</div>
-                <p>No screenshots yet. They'll appear here every 10 minutes.</p>
-              </div>
-            ` : `
-              <div class="screenshot-grid">
-                ${screenshots.slice(0, 20).map(s => `
-                  <div class="screenshot-card">
-                    <img class="screenshot-image" src="${s.imageUrl}" alt="Screenshot" onclick="openLightbox('${s.imageUrl}')">
-                    <div class="screenshot-info">
-                      <div class="screenshot-time">${formatDateTime(s.captured_at)}</div>
-                      <div class="screenshot-url">${s.url || 'Unknown page'}</div>
-                    </div>
-                  </div>
-                `).join('')}
-              </div>
-            `}
+            <div class="empty-state">
+              <div class="empty-state-icon">🍅</div>
+              <p>Your Pomodoro timer is running in the corner of your screen.<br>Stay focused and productive!</p>
+            </div>
           </div>
         </div>
       `);
