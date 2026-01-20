@@ -560,8 +560,6 @@
             currentUser = await res.json();
             if (currentUser.role === 'teacher') {
               showTeacherDashboard();
-            } else if (!currentUser.agreedToTerms) {
-              showAgreementPage();
             } else {
               showStudentDashboard();
             }
@@ -1019,8 +1017,6 @@
           
           if (currentUser.role === 'teacher') {
             showTeacherDashboard();
-          } else if (!currentUser.agreedToTerms) {
-            showAgreementPage();
           } else {
             showStudentDashboard();
           }

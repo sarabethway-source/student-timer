@@ -185,8 +185,8 @@ app.post('/api/register', async (req, res) => {
     
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = dbRun(
-      'INSERT INTO users (name, email, password, role, created_at) VALUES (?, ?, ?, ?, ?)',
-      [name, email, hashedPassword, 'student', new Date().toISOString()]
+      'INSERT INTO users (name, email, password, role, agreed_to_terms, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, 'student', 1, new Date().toISOString()]
     );
     
     res.json({ success: true, userId: result.lastInsertRowid });
